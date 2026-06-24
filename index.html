@@ -179,6 +179,14 @@
         const src = img.getAttribute("src") || "";
         if (!/^(https?:|data:)/.test(src)) img.src = base + src.replace(/^\.?\//, "");
       });
+      // 상대경로 링크 → GitHub blob 절대경로 (예: 기술소개서.pdf)
+      body.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href") || "";
+        if (!href || href.startsWith("#") || /^(https?:|mailto:)/.test(href)) return;
+        a.href = `https://github.com/${repo}/blob/${branch}/` + href.replace(/^\.?\//, "");
+        a.target = "_blank";
+        a.rel = "noopener";
+      });
       body.querySelectorAll("code.language-mermaid").forEach((c) => {
         const pre = document.createElement("pre");
         pre.className = "mermaid";
