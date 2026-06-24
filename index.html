@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown-dark.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -55,6 +56,10 @@
         <div class="card-links">
           <a href="https://github.com/JeahanPark/WES_Project" target="_blank" rel="noopener">Repository →</a>
         </div>
+        <details class="readme">
+          <summary>README 펼쳐보기</summary>
+          <div class="readme-body markdown-body" data-repo="JeahanPark/WES_Project" data-branch="main"></div>
+        </details>
       </div>
     </article>
 
@@ -87,6 +92,10 @@
           <a href="https://github.com/JeahanPark/NetworkProject1" target="_blank" rel="noopener">Repository →</a>
           <a href="https://youtu.be/GegMbj8o-Xk" target="_blank" rel="noopener">플레이 영상 ▶</a>
         </div>
+        <details class="readme">
+          <summary>README 펼쳐보기</summary>
+          <div class="readme-body markdown-body" data-repo="JeahanPark/NetworkProject1" data-branch="master"></div>
+        </details>
       </div>
     </article>
 
@@ -119,6 +128,10 @@
           <a href="https://github.com/JeahanPark/LeagueOfLegends-Clone" target="_blank" rel="noopener">Repository →</a>
           <a href="https://youtu.be/G9zwh5xD5yc" target="_blank" rel="noopener">시연 영상 ▶</a>
         </div>
+        <details class="readme">
+          <summary>README 펼쳐보기</summary>
+          <div class="readme-body markdown-body" data-repo="JeahanPark/LeagueOfLegends-Clone" data-branch="main"></div>
+        </details>
       </div>
     </article>
   </main>
@@ -132,5 +145,47 @@
     </div>
     <p class="copy">© 2026 박재한 (JeahanPark)</p>
   </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+
+    document.querySelectorAll("details.readme").forEach((d) => {
+      d.addEventListener("toggle", async () => {
+        const body = d.querySelector(".readme-body");
+        if (!d.open || body.dataset.loaded) return;
+        body.dataset.loaded = "1";
+        const { repo, branch } = body.dataset;
+        const base = `https://raw.githubusercontent.com/${repo}/${branch}/`;
+        body.innerHTML = '<p class="readme-msg">README 불러오는 중…</p>';
+        try {
+          const res = await fetch(base + "README.md");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          body.innerHTML = marked.parse(await res.text());
+
+          // 상대경로 이미지 → raw 절대경로
+          body.querySelectorAll("img").forEach((img) => {
+            const src = img.getAttribute("src") || "";
+            if (!/^(https?:|data:)/.test(src)) img.src = base + src.replace(/^\.?\//, "");
+          });
+
+          // mermaid 코드블록 변환 후 렌더
+          body.querySelectorAll("code.language-mermaid").forEach((c) => {
+            const pre = document.createElement("pre");
+            pre.className = "mermaid";
+            pre.textContent = c.textContent;
+            (c.closest("pre") || c).replaceWith(pre);
+          });
+          const nodes = body.querySelectorAll(".mermaid");
+          if (nodes.length) await mermaid.run({ nodes });
+        } catch (e) {
+          body.innerHTML =
+            `<p class="readme-msg">README를 불러오지 못했습니다 (${e.message}). ` +
+            `<a href="https://github.com/${repo}" target="_blank" rel="noopener">repo에서 보기 →</a></p>`;
+        }
+      });
+    });
+  </script>
 </body>
 </html>
