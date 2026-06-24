@@ -57,10 +57,7 @@
           <a href="https://github.com/JeahanPark/WES_Project" target="_blank" rel="noopener">Repository →</a>
         </div>
       </div>
-      <details class="readme">
-        <summary>README 펼쳐보기</summary>
-        <div class="readme-body markdown-body" data-repo="JeahanPark/WES_Project" data-branch="main"></div>
-      </details>
+      <button class="readme-btn" data-repo="JeahanPark/WES_Project" data-branch="main" data-title="WES — 야생 생존 탈출">📄 README 보기</button>
     </article>
 
     <!-- NetworkProject1 -->
@@ -93,10 +90,7 @@
           <a href="https://youtu.be/GegMbj8o-Xk" target="_blank" rel="noopener">플레이 영상 ▶</a>
         </div>
       </div>
-      <details class="readme">
-        <summary>README 펼쳐보기</summary>
-        <div class="readme-body markdown-body" data-repo="JeahanPark/NetworkProject1" data-branch="master"></div>
-      </details>
+      <button class="readme-btn" data-repo="JeahanPark/NetworkProject1" data-branch="master" data-title="NetworkProject1 — 멀티플레이어 탑뷰 슈팅">📄 README 보기</button>
     </article>
 
     <!-- LoL Clone -->
@@ -129,10 +123,7 @@
           <a href="https://youtu.be/G9zwh5xD5yc" target="_blank" rel="noopener">시연 영상 ▶</a>
         </div>
       </div>
-      <details class="readme">
-        <summary>README 펼쳐보기</summary>
-        <div class="readme-body markdown-body" data-repo="JeahanPark/LeagueOfLegends-Clone" data-branch="main"></div>
-      </details>
+      <button class="readme-btn" data-repo="JeahanPark/LeagueOfLegends-Clone" data-branch="main" data-title="League of Legends (모작) — 자체 엔진 팀 프로젝트">📄 README 보기</button>
     </article>
   </main>
 
@@ -146,39 +137,69 @@
     <p class="copy">© 2026 박재한 (JeahanPark)</p>
   </footer>
 
+  <!-- ===== README Modal ===== -->
+  <div class="modal" id="readme-modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <header class="modal-head">
+        <h3 id="modal-title"></h3>
+        <button class="modal-close" data-close aria-label="닫기">×</button>
+      </header>
+      <div class="readme-body markdown-body" id="modal-body"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
     mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
 
-    document.querySelectorAll("details.readme").forEach((d) => {
-      d.addEventListener("toggle", async () => {
-        const body = d.querySelector(".readme-body");
-        if (!d.open || body.dataset.loaded) return;
-        body.dataset.loaded = "1";
-        const { repo, branch } = body.dataset;
-        const base = `https://raw.githubusercontent.com/${repo}/${branch}/`;
+    const modal = document.getElementById("readme-modal");
+    const titleEl = document.getElementById("modal-title");
+    const body = document.getElementById("modal-body");
+    const cache = {};
+
+    function openModal() {
+      modal.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+    function closeModal() {
+      modal.hidden = true;
+      document.body.style.overflow = "";
+    }
+    modal.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", closeModal));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+
+    async function render(repo, branch) {
+      const base = `https://raw.githubusercontent.com/${repo}/${branch}/`;
+      const res = await fetch(base + "README.md");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      body.innerHTML = marked.parse(await res.text());
+      body.querySelectorAll("img").forEach((img) => {
+        const src = img.getAttribute("src") || "";
+        if (!/^(https?:|data:)/.test(src)) img.src = base + src.replace(/^\.?\//, "");
+      });
+      body.querySelectorAll("code.language-mermaid").forEach((c) => {
+        const pre = document.createElement("pre");
+        pre.className = "mermaid";
+        pre.textContent = c.textContent;
+        (c.closest("pre") || c).replaceWith(pre);
+      });
+      const nodes = body.querySelectorAll(".mermaid");
+      if (nodes.length) await mermaid.run({ nodes });
+    }
+
+    document.querySelectorAll(".readme-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const { repo, branch, title } = btn.dataset;
+        titleEl.textContent = title;
+        body.scrollTop = 0;
+        openModal();
+        if (cache[repo]) { body.innerHTML = cache[repo]; return; }
         body.innerHTML = '<p class="readme-msg">README 불러오는 중…</p>';
         try {
-          const res = await fetch(base + "README.md");
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          body.innerHTML = marked.parse(await res.text());
-
-          // 상대경로 이미지 → raw 절대경로
-          body.querySelectorAll("img").forEach((img) => {
-            const src = img.getAttribute("src") || "";
-            if (!/^(https?:|data:)/.test(src)) img.src = base + src.replace(/^\.?\//, "");
-          });
-
-          // mermaid 코드블록 변환 후 렌더
-          body.querySelectorAll("code.language-mermaid").forEach((c) => {
-            const pre = document.createElement("pre");
-            pre.className = "mermaid";
-            pre.textContent = c.textContent;
-            (c.closest("pre") || c).replaceWith(pre);
-          });
-          const nodes = body.querySelectorAll(".mermaid");
-          if (nodes.length) await mermaid.run({ nodes });
+          await render(repo, branch);
+          cache[repo] = body.innerHTML;
         } catch (e) {
           body.innerHTML =
             `<p class="readme-msg">README를 불러오지 못했습니다 (${e.message}). ` +
